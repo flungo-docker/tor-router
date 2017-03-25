@@ -1,0 +1,65 @@
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT DROP [0:0]
+
+# Allow related/established traffic
+-A INPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+# Allow traffic on local loopback
+-A INPUT -i lo -j ACCEPT
+# Allow connections to Tor Proxy
+-A INPUT -p tcp --dport 9050 -m state --state NEW -j ACCEPT
+-A INPUT -p udp --dport 5353 -m state --state NEW -j ACCEPT
+# Log dropped packets
+-A INPUT -j LOG --log-prefix "Dropped INPUT packet: " --log-level 7 --log-uid
+
+# Don't allow any packet forwarding
+
+# Block invalid traffic
+-A OUTPUT -m state --state INVALID -j DROP
+# Allow related/established traffic
+-A OUTPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
+# Allow outbound connection for the tor-router user to the Tor directory servers and network
+-A OUTPUT -m owner -o eth0 --uid-owner 9001 -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j ACCEPT
+# Allow traffic on local loopback
+-A OUTPUT -d 127.0.0.1/32 -o lo -j ACCEPT
+# Allow connections to local transparent listener
+-A OUTPUT -d 127.0.0.1/32 -p tcp --syn --dport 9040 -j ACCEPT
+# Log all other dropped packets
+-A OUTPUT -j LOG --log-prefix "Dropped OUTPUT packet: " --log-level 7 --log-uid
+
+COMMIT
+
+*nat PREROUTING
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+
+# Skip pre-routing if interface is WAN or local
+-A PREROUTING -i eth0 -j RETURN
+-A PREROUTING -i lo -j RETURN
+# Redirect all .onion addresses
+-A PREROUTING -d 10.192.0.0/10 -p tcp --syn -j REDIRECT --to-ports 9040
+# Redirect UDP DNS traffic to internal DNS server
+-A PREROUTING -p udp --dport 5353 -j REDIRECT --to-ports 5353
+-A PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 5353
+# Skip pre-routing if destination is private or reserved
+-A PREROUTING -d 0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.88.99.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4,255.255.255.255/32 -j RETURN
+# Redirect remaining TCP traffic
+-A PREROUTING -p tcp --syn -j REDIRECT --to-ports 9040
+
+# Redirect all .onion addresses
+-A OUTPUT -d 10.192.0.0/10 -p tcp --syn -j REDIRECT --to-ports 9040
+# Redirect all DNS traffic
+-A OUTPUT -p udp --dport 53 -j REDIRECT --to-ports 5353
+# Allow the tor-router to bypass transparent routing
+-A OUTPUT -m owner --uid-owner 9001 -j RETURN
+# Don't transparently redirect traffic out of the loopback
+-A OUTPUT -o lo -j RETURN
+# Don't redirect if destination is private or reserved
+-A OUTPUT -d 0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.88.99.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,240.0.0.0/4,255.255.255.255/32 -j RETURN
+# Redirect remaining TCP traffic
+-A OUTPUT -p tcp --syn -j REDIRECT --to-ports 9040
+
+COMMIT

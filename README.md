@@ -11,7 +11,7 @@ In all methods, it is required that the container is started with `--cap-add NET
 To start the container run the following command:
 
 ```
-docker run -d --name tor-router --cap-add NET_ADMIN --dns 127.0.0.1 flungo/tor
+docker run -d --name tor-router --cap-add NET_ADMIN --dns 127.0.0.1 flungo/tor-router
 ```
 
 The `NET_ADMIN` capability is used to allow configuration of the iptables.
@@ -37,7 +37,7 @@ docker run -d \
   --dns 127.0.0.1 \
   -p 9050:9050 \
   -p 53:5353/udp \
-  flungo/tor
+  flungo/tor-router
 ```
 
 From the host machine you can then use the SOCKS proxy in conjunction with the DNS server to route traffic over the Tor network. The DNS server will need to be set in `/etc/resolve.conf` (unless the application you wish to protect allows the DNS to be configured). Here is an example of using curl on the host machine through the proxy:

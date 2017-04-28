@@ -7,6 +7,8 @@
 -A INPUT -m conntrack --ctstate ESTABLISHED -j ACCEPT
 # Allow traffic on local loopback
 -A INPUT -i lo -j ACCEPT
+# Allow ICMP packets
+-A INPUT -p icmp -j ACCEPT
 # Allow connections to Tor Proxy
 -A INPUT -p tcp --dport 9050 -m state --state NEW -j ACCEPT
 -A INPUT -p udp --dport 5353 -m state --state NEW -j ACCEPT
@@ -30,7 +32,7 @@
 
 COMMIT
 
-*nat PREROUTING
+*nat
 :PREROUTING ACCEPT [0:0]
 :INPUT ACCEPT [0:0]
 :OUTPUT ACCEPT [0:0]
